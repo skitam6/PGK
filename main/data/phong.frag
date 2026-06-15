@@ -3,6 +3,8 @@ precision mediump float;
 precision mediump int;
 #endif
 
+#define PROCESSING_TEXLIGHT_SHADER
+
 uniform sampler2D texture;
 
 uniform vec4 lightPosition[8];
@@ -14,15 +16,16 @@ uniform vec3 lightFalloff[8];
 uniform vec2 lightSpot[8];
 uniform int lightCount;
 
-varying vec4 vertColor;
-varying vec3 vertNormal;
-varying vec3 ecVertex;
-varying vec2 vertTexCoord;
-
+// Nasze autorskie uniformy
 uniform vec4 myAmbient;
 uniform vec4 mySpecular;
 uniform vec4 myEmissive;
 uniform float myShininess;
+
+varying vec4 vertColor;
+varying vec3 vertNormal;
+varying vec3 ecVertex;
+varying vec2 vertTexCoord;
 
 const float zero_float = 0.0;
 const float one_float = 1.0;
@@ -87,6 +90,7 @@ void main() {
     totalSpecular += lightSpecular[i] * falloff * spotAtten * spec;
   }
 
+  // Używamy naszych zmiennych myAmbient, mySpecular, myEmissive!
   vec3 ambientColor = vertColor.rgb * myAmbient.rgb;
   vec3 totalCol = ambientColor * totalAmbient
                 + vertColor.rgb * totalDiffuse

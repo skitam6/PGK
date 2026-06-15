@@ -1,5 +1,6 @@
 #define PROCESSING_TEXLIGHT_SHADER
 
+uniform mat4 texMatrix;
 uniform mat4 modelview;
 uniform mat4 transform;
 uniform mat3 normalMatrix;
@@ -18,6 +19,13 @@ attribute vec4 color;
 attribute vec3 normal;
 attribute vec2 texCoord;
 
+// Zostawiamy dla parsera Processinga, by nie krzyczał błędami:
+attribute vec4 ambient;
+attribute vec4 specular;
+attribute vec4 emissive;
+attribute float shininess;
+
+// Nasze autorskie, "twarde" uniformy, które narzuciliśmy z Java:
 uniform vec4 myAmbient;
 uniform vec4 mySpecular;
 uniform vec4 myEmissive;
@@ -28,7 +36,6 @@ varying vec2 vertTexCoord;
 
 const float zero_float = 0.0;
 const float one_float = 1.0;
-const vec3 zero_vec3 = vec3(0);
 
 float falloffFactor(vec3 lightPos, vec3 vertPos, vec3 coeff) {
   vec3 lpv = lightPos - vertPos;
@@ -92,6 +99,7 @@ void main() {
     totalSpecular += lightSpecular[i] * falloff * spotAtten * spec;
   }
 
+  // Używamy myAmbient, mySpecular, myEmissive, by uniknąć defektu czarnego koloru!
   vec3 ambientColor = color.rgb * myAmbient.rgb;
   vec3 totalCol = ambientColor * totalAmbient
                 + color.rgb * totalDiffuse
@@ -99,7 +107,7 @@ void main() {
                 + myEmissive.rgb;
 
   vertColor = vec4(totalCol, color.a);
-  vertTexCoord = texCoord;
+  vertTexCoord = (texMatrix * vec4(texCoord, 1.0, 1.0)).xy;
 
   gl_Position = transform * vertex;
 }
