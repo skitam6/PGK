@@ -77,15 +77,13 @@ void drawGripper(float arm2L, float armW) {
       pushMatrix();
       translate(0, lightY, 0); 
       if (!isWireframe) {
-        resetShader(); // BYPASS
+        resetShader();
         
         boolean tempState = isCustomShaderActive;
         isCustomShaderActive = false;
         
         setMaterial(255, 255, 255, 2);
         sphere(4);
-        
-        // NAPRAWIONE PRZYWRÓCENIE SHADERA
         isCustomShaderActive = tempState;
         if (isCustomShaderActive && shadingMode == 1) {
           shader(flatShader);

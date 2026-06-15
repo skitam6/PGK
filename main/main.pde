@@ -367,19 +367,19 @@ void drawObstacles() {
     pushMatrix();
     translate(obsX[i], 0, obsZ[i]);
 
-    if (obsType[i] == 0) { // pachoł
+    if (obsType[i] == 0) {
       setMaterial(255, 100, 0, matPreset);
       pushMatrix(); 
       translate(0, -obsH[i] / 2, 0); 
       box(obsR[i] * 1.4, obsH[i] * 0.8, obsR[i] * 1.4); 
       popMatrix();
-    } else if (obsType[i] == 1) { // pylon
+    } else if (obsType[i] == 1) {
       setMaterial(150, 150, 160, matPreset);
       pushMatrix(); 
       translate(0, -obsH[i] / 2, 0); 
       box(obsR[i], obsH[i], obsR[i]); 
       popMatrix();
-    } else if (obsType[i] == 2) { // box
+    } else if (obsType[i] == 2) {
       setMaterial(120, 80, 40, matPreset);
       pushMatrix(); 
       translate(0, -obsH[i] / 2, 0); 
