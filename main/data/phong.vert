@@ -9,11 +9,6 @@ attribute vec4 color;
 attribute vec3 normal;
 attribute vec2 texCoord;
 
-attribute vec4 ambient;
-attribute vec4 specular;
-attribute vec4 emissive;
-attribute float shininess;
-
 varying vec4 vertColor;
 varying vec3 vertNormal;
 varying vec3 ecVertex;

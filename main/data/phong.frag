@@ -19,10 +19,10 @@ varying vec3 vertNormal;
 varying vec3 ecVertex;
 varying vec2 vertTexCoord;
 
-varying vec4 vAmbient;
-varying vec4 vSpecular;
-varying vec4 vEmissive;
-varying float vShininess;
+uniform vec4 myAmbient;
+uniform vec4 mySpecular;
+uniform vec4 myEmissive;
+uniform float myShininess;
 
 const float zero_float = 0.0;
 const float one_float = 1.0;
@@ -80,18 +80,18 @@ void main() {
     float nDotVPi = lambertFactor(lightDir, ecNormalInv);
     float diffFactor = max(nDotVP, nDotVPi);
 
-    float spec = blinnPhongFactor(lightDir, (nDotVP > nDotVPi ? ecNormal : ecNormalInv), viewDir, vShininess);
+    float spec = blinnPhongFactor(lightDir, (nDotVP > nDotVPi ? ecNormal : ecNormalInv), viewDir, myShininess);
 
     totalAmbient  += lightAmbient[i]  * falloff * spotAtten;
     totalDiffuse  += lightDiffuse[i]  * falloff * spotAtten * diffFactor;
     totalSpecular += lightSpecular[i] * falloff * spotAtten * spec;
   }
 
-  vec3 ambientColor = vertColor.rgb * vAmbient.rgb;
+  vec3 ambientColor = vertColor.rgb * myAmbient.rgb;
   vec3 totalCol = ambientColor * totalAmbient
                 + vertColor.rgb * totalDiffuse
-                + vSpecular.rgb * totalSpecular
-                + vEmissive.rgb;
+                + mySpecular.rgb * totalSpecular
+                + myEmissive.rgb;
 
   vec4 texColor = texture2D(texture, vertTexCoord);
   gl_FragColor = vec4(totalCol, vertColor.a) * texColor;

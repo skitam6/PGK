@@ -69,17 +69,20 @@ void drawGripper(float arm2L, float armW) {
       pointLight(255, 255, 255,   0, lightY, 0); 
     }
     if (isDebug) {
-      pushMatrix(); 
+      pushMatrix();
       translate(0, lightY, 0); 
       if (!isWireframe) {
+        resetShader(); // BYPASS
         setMaterial(255, 255, 255, 2);
-        sphere(4); 
-      } 
-      else {
+        sphere(4);
+        
+        // PRZYWRÓCENIE SHADERA
+        if (shadingMode == 1) shader(gouraudShader);
+        else if (shadingMode == 2) shader(phongShader);
+      } else {
         stroke(255); 
         noFill();
-        sphere(4); 
-        
+        sphere(4);
       }
       popMatrix();
     }

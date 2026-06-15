@@ -17,13 +17,19 @@ void applyLighting() {
       pushMatrix();
       translate(300, antennaTipY, 200);
       if (!isWireframe) {
+        resetShader(); // BYPASS - wyłączamy shader na moment
         setMaterial((int)intensity, 0, 0, 2);
         noStroke();
+        sphere(5);
+        
+        // PRZYWRÓCENIE SHADERA dla reszty sceny
+        if (shadingMode == 1) shader(gouraudShader);
+        else if (shadingMode == 2) shader(phongShader);
       } else {
         stroke(255, 0, 0);
         noFill();
+        sphere(5);
       }
-      sphere(5);
       popMatrix();
     }
   }
@@ -33,21 +39,41 @@ void setMaterial(int r, int g, int b, int type) {
   if (isWireframe) return;
   fill(r, g, b);
 
+  float ar = 0, ag = 0, ab = 0;
+  float sr = 0, sg = 0, sb = 0;
+  float er = 0, eg = 0, eb = 0;
+  float shine = 1;
+
   if (type == 0) {
-    ambient(r/2.0, g/2.0, b/2.0);
-    specular(20);
-    shininess(2);
-    emissive(0);
+    ar = r/2.0; ag = g/2.0; ab = b/2.0;
+    sr = 20; sg = 20; sb = 20;
+    shine = 2;
   } else if (type == 1) {
-    ambient(r/3.0, g/3.0, b/3.0);
-    specular(255);
-    shininess(80);
-    emissive(0);
+    ar = r/3.0; ag = g/3.0; ab = b/3.0;
+    sr = 255; sg = 255; sb = 255;
+    shine = 80;
   } else if (type == 2) {
-    ambient(0);
-    specular(0);
-    shininess(1);
-    emissive(r, g, b);
+    er = r; eg = g; eb = b;
+    shine = 1;
+  }
+
+  ambient(ar, ag, ab);
+  specular(sr, sg, sb);
+  emissive(er, eg, eb);
+  shininess(shine);
+
+  // Wymuszony "przesył" omijający wewnętrzny system Processinga!
+  if (gouraudShader != null) {
+    gouraudShader.set("myAmbient", ar/255.0, ag/255.0, ab/255.0, 1.0);
+    gouraudShader.set("mySpecular", sr/255.0, sg/255.0, sb/255.0, 1.0);
+    gouraudShader.set("myEmissive", er/255.0, eg/255.0, eb/255.0, 1.0);
+    gouraudShader.set("myShininess", shine);
+  }
+  if (phongShader != null) {
+    phongShader.set("myAmbient", ar/255.0, ag/255.0, ab/255.0, 1.0);
+    phongShader.set("mySpecular", sr/255.0, sg/255.0, sb/255.0, 1.0);
+    phongShader.set("myEmissive", er/255.0, eg/255.0, eb/255.0, 1.0);
+    phongShader.set("myShininess", shine);
   }
 }
 

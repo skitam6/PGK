@@ -1,4 +1,4 @@
-#define PROCESSING_LIGHT_SHADER
+#define PROCESSING_TEXLIGHT_SHADER
 
 uniform mat4 modelview;
 uniform mat4 transform;
@@ -13,15 +13,15 @@ uniform vec3 lightFalloff[8];
 uniform vec2 lightSpot[8];
 uniform int lightCount;
 
-attribute vec4 position;
+attribute vec4 vertex;
 attribute vec4 color;
 attribute vec3 normal;
 attribute vec2 texCoord;
 
-attribute vec4 ambient;
-attribute vec4 specular;
-attribute vec4 emissive;
-attribute float shininess;
+uniform vec4 myAmbient;
+uniform vec4 mySpecular;
+uniform vec4 myEmissive;
+uniform float myShininess;
 
 varying vec4 vertColor;
 varying vec2 vertTexCoord;
@@ -55,7 +55,7 @@ float blinnPhongFactor(vec3 lightDir, vec3 vecNormal, vec3 viewDir, float shine)
 }
 
 void main() {
-  vec4 viewPos = modelview * position;
+  vec4 viewPos = modelview * vertex;
   vec3 ecVertex = viewPos.xyz;
   vec3 ecNormal = normalize(normalMatrix * normal);
   vec3 ecNormalInv = ecNormal * -one_float;
@@ -85,21 +85,21 @@ void main() {
     float nDotVPi = lambertFactor(lightDir, ecNormalInv);
     float diffFactor = max(nDotVP, nDotVPi);
 
-    float spec = blinnPhongFactor(lightDir, (nDotVP > nDotVPi ? ecNormal : ecNormalInv), viewDir, shininess);
+    float spec = blinnPhongFactor(lightDir, (nDotVP > nDotVPi ? ecNormal : ecNormalInv), viewDir, myShininess);
 
     totalAmbient  += lightAmbient[i]  * falloff * spotAtten;
     totalDiffuse  += lightDiffuse[i]  * falloff * spotAtten * diffFactor;
     totalSpecular += lightSpecular[i] * falloff * spotAtten * spec;
   }
 
-  vec3 ambientColor = color.rgb * ambient.rgb;
+  vec3 ambientColor = color.rgb * myAmbient.rgb;
   vec3 totalCol = ambientColor * totalAmbient
                 + color.rgb * totalDiffuse
-                + specular.rgb * totalSpecular
-                + emissive.rgb;
+                + mySpecular.rgb * totalSpecular
+                + myEmissive.rgb;
 
   vertColor = vec4(totalCol, color.a);
   vertTexCoord = texCoord;
 
-  gl_Position = transform * position;
+  gl_Position = transform * vertex;
 }
