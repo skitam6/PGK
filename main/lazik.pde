@@ -13,33 +13,37 @@ void drawRover() {
   box(bodyW, bodyH, bodyD);
   popMatrix();
 
-  drawWheel(-bodyW/2, 0, bodyD/3, wheelR);   
+  drawWheel(-bodyW/2, 0, bodyD/3, wheelR);
   drawWheel(bodyW/2, 0, bodyD/3, wheelR);    
   drawWheel(-bodyW/2, 0, -bodyD/3, wheelR);  
   drawWheel(bodyW/2, 0, -bodyD/3, wheelR);   
 
   pushMatrix();
   translate(0, -bodyH, 0);     
-  rotateY(turretAngle);        
-  setMaterial(0, 100, 255, matPreset);
+  rotateY(turretAngle);
+
+  setMaterial(0, 100, 255, matPreset); 
   translate(0, -turretH/2, 0); 
   box(turretW, turretH, turretD);
   
-  pushMatrix();
-  translate(0, -turretH/2, 0); 
-  rotateZ(arm1Angle);          
-  translate(0, -arm1L/2, 0);   
-  box(armW, arm1L, armW);
-  
-  pushMatrix();
-  translate(0, -arm1L/2, 0); 
-  rotateZ(arm2Angle);          
-  translate(0, -arm2L/2, 0);
-  box(armW, arm2L, armW); 
-  drawGripper(arm2L, armW);
+    pushMatrix();
+    translate(0, -turretH/2, 0); 
+    rotateZ(arm1Angle);          
+    
+    translate(0, -arm1L/2, 0);   
+    box(armW, arm1L, armW);
+    
+      pushMatrix();
+      translate(0, -arm1L/2, 0); 
+      rotateZ(arm2Angle);        
+      
+      translate(0, -arm2L/2, 0);
+      box(armW, arm2L, armW);
+      
+        drawGripper(arm2L, armW);
         
-  popMatrix(); 
-  popMatrix(); 
+      popMatrix(); 
+    popMatrix(); 
   popMatrix(); 
   popMatrix(); 
 }
@@ -48,11 +52,11 @@ void drawWheel(float x, float y, float z, float r) {
   pushMatrix();
   translate(x, y, z);
   rotateX(-wheelSpin); 
-  scale(0.5, 1.0, 1.0); 
   
+  scale(0.5, 1.0, 1.0); 
   if (!isWireframe) {
     noStroke(); 
-    setMaterial(30, 30, 30, 0);
+    setMaterial(30, 30, 30, 0);   
   }
   sphere(r);
   popMatrix();
@@ -61,24 +65,31 @@ void drawWheel(float x, float y, float z, float r) {
 void drawGripper(float arm2L, float armW) {
   pushMatrix();
   translate(0, -arm2L/2, 0);
+  
   float lightY = -armW * 0.8; 
   
   if (isLightsOn && lightPreset == 1) {
     if (!isWireframe) {
-      spotLight(255, 255, 255, 0, lightY, 0,   0, -1, 0,   PI/3, 2);
-      pointLight(255, 255, 255,   0, lightY, 0); 
+      spotLight(255, 255, 255, 0, lightY, 0, 0, -1, 0, PI/3, 2);
     }
+    
     if (isDebug) {
       pushMatrix();
       translate(0, lightY, 0); 
       if (!isWireframe) {
         resetShader(); // BYPASS
+        
+        boolean tempState = isCustomShaderActive;
+        isCustomShaderActive = false;
+        
         setMaterial(255, 255, 255, 2);
         sphere(4);
         
-        // PRZYWRÓCENIE SHADERA
-        if (shadingMode == 1) shader(gouraudShader);
-        else if (shadingMode == 2) shader(phongShader);
+        // NAPRAWIONE PRZYWRÓCENIE SHADERA
+        isCustomShaderActive = tempState;
+        if (isCustomShaderActive && shadingMode == 1) {
+          shader(flatShader);
+        }
       } else {
         stroke(255); 
         noFill();
@@ -99,15 +110,13 @@ void drawGripper(float arm2L, float armW) {
   pushMatrix();
   if (isTR) {
     translate(gripperSpread, -armW*1.5, 0);
-    rotateZ(0);
-    setMaterial(255, 120, 0, matPreset);
-  } 
-  else {
+    rotateZ(0); setMaterial(255, 120, 0, matPreset);
+  } else {
     rotateZ(QUARTER_PI);
-    translate(gripperSpread, -armW*1.5, 0);
-    setMaterial(255, 0, 0, matPreset);
+    translate(gripperSpread, -armW*1.5, 0); setMaterial(255, 0, 0, matPreset);
   } 
   box(armW/2, armW*2, armW);
   popMatrix();
+  
   popMatrix();
 }

@@ -3,6 +3,11 @@ void applyLighting() {
     ambientLight(10, 10, 10);
     return;
   }
+  
+  // KROK 3: Naprawa globalnego speculara!
+  // W Processingu domyślny lightSpecular wynosi 0, co uniemożliwiało rysowanie błysków
+  // na powierzchniach. Ta jedna linijka sprawia, że światło zacznie rzucać białe odblaski.
+  lightSpecular(255, 255, 255);
 
   if (lightPreset == 0) {
     ambientLight(150, 150, 150);
@@ -17,14 +22,19 @@ void applyLighting() {
       pushMatrix();
       translate(300, antennaTipY, 200);
       if (!isWireframe) {
-        resetShader(); // BYPASS - wyłączamy shader na moment
+        resetShader(); // BYPASS
+        
+        boolean tempState = isCustomShaderActive;
+        isCustomShaderActive = false;
+        
         setMaterial((int)intensity, 0, 0, 2);
         noStroke();
         sphere(5);
         
-        // PRZYWRÓCENIE SHADERA dla reszty sceny
-        if (shadingMode == 1) shader(gouraudShader);
-        else if (shadingMode == 2) shader(phongShader);
+        isCustomShaderActive = tempState;
+        if (isCustomShaderActive && shadingMode == 1) {
+          shader(flatShader);
+        }
       } else {
         stroke(255, 0, 0);
         noFill();
@@ -39,55 +49,59 @@ void setMaterial(int r, int g, int b, int type) {
   if (isWireframe) return;
   fill(r, g, b);
 
-  float ar = 0, ag = 0, ab = 0;
-  float sr = 0, sg = 0, sb = 0;
-  float er = 0, eg = 0, eb = 0;
+  float ambR = 0, ambG = 0, ambB = 0;
+  float specR = 0, specG = 0, specB = 0;
   float shine = 1;
+  float emiR = 0, emiG = 0, emiB = 0;
 
-  if (type == 0) {
-    ar = r/2.0; ag = g/2.0; ab = b/2.0;
-    sr = 20; sg = 20; sb = 20;
+  if (type == 0) { // MATOWY
+    ambR = r/2.0; ambG = g/2.0; ambB = b/2.0;
+    specR = 20; specG = 20; specB = 20;
     shine = 2;
-  } else if (type == 1) {
-    ar = r/3.0; ag = g/3.0; ab = b/3.0;
-    sr = 255; sg = 255; sb = 255;
+  } else if (type == 1) { // BŁYSZCZĄCY METAL
+    ambR = r/3.0; ambG = g/3.0; ambB = b/3.0;
+    specR = 255; specG = 255; specB = 255;
     shine = 80;
-  } else if (type == 2) {
-    er = r; eg = g; eb = b;
-    shine = 1;
+  } else if (type == 2) { // EMISSIVE
+    emiR = r; emiG = g; emiB = b;
   }
 
-  ambient(ar, ag, ab);
-  specular(sr, sg, sb);
-  emissive(er, eg, eb);
-  shininess(shine);
-
-  // Wymuszony "przesył" omijający wewnętrzny system Processinga!
-  if (gouraudShader != null) {
-    gouraudShader.set("myAmbient", ar/255.0, ag/255.0, ab/255.0, 1.0);
-    gouraudShader.set("mySpecular", sr/255.0, sg/255.0, sb/255.0, 1.0);
-    gouraudShader.set("myEmissive", er/255.0, eg/255.0, eb/255.0, 1.0);
-    gouraudShader.set("myShininess", shine);
-  }
-  if (phongShader != null) {
-    phongShader.set("myAmbient", ar/255.0, ag/255.0, ab/255.0, 1.0);
-    phongShader.set("mySpecular", sr/255.0, sg/255.0, sb/255.0, 1.0);
-    phongShader.set("myEmissive", er/255.0, eg/255.0, eb/255.0, 1.0);
-    phongShader.set("myShininess", shine);
+  if (isCustomShaderActive) {
+    if (shadingMode == 1 && flatShader != null) {
+      // KROK 2: Ręczne forsowanie danych (Manual Uniform Binding)
+      // Usunęliśmy nieużywaną zmienną myDiffuse.
+      // Pozostałe parametry przeliczamy na ułamki 0.0 - 1.0 i dodajemy `1.0` na końcu, 
+      // aby poprawnie zbudować obiekt typu `vec4`, którego wymaga plik .glsl!
+      flatShader.set("myAmbient", ambR/255.0, ambG/255.0, ambB/255.0, 1.0);
+      flatShader.set("mySpecular", specR/255.0, specG/255.0, specB/255.0, 1.0);
+      flatShader.set("myShininess", shine);
+      flatShader.set("myEmissive", emiR/255.0, emiG/255.0, emiB/255.0, 1.0);
+    }
+  } else {
+    ambient(ambR, ambG, ambB);
+    specular(specR, specG, specB);
+    shininess(shine);
+    emissive(emiR, emiG, emiB);
   }
 }
 
 void drawEnvironment() {
   pushStyle();
-
   if (!isWireframe) {
     pushMatrix();
     translate(0, 1, 0);
     rotateX(HALF_PI);
-
     int tileSize = 50;
-
+    
     if (groundTex != null) {
+      // --- BYPASS DLA TEKSTURY PODŁOGI ---
+      // Wyłączamy shader na ułamek sekundy, aby nie gryzł się z teksturą!
+      boolean tempState = isCustomShaderActive;
+      if (isCustomShaderActive) {
+        resetShader();
+        isCustomShaderActive = false;
+      }
+      
       setMaterial(255, 255, 255, 0);
       beginShape(QUADS);
       texture(groundTex);
@@ -100,37 +114,16 @@ void drawEnvironment() {
         }
       }
       endShape();
-    } else {
-      setMaterial(70, 70, 70, 0);
-      beginShape(QUADS);
-      for (int x = -5000; x < 5000; x += tileSize) {
-        for (int y = -5000; y < 5000; y += tileSize) {
-          vertex(x, y, 0);
-          vertex(x + tileSize, y, 0);
-          vertex(x + tileSize, y + tileSize, 0);
-          vertex(x, y + tileSize, 0);
-        }
+      
+      // --- PRZYWRACAMY SHADER DLA RESZTY SCENY (pachołki, modele) ---
+      isCustomShaderActive = tempState;
+      if (isCustomShaderActive && shadingMode == 1) {
+        shader(flatShader);
       }
-      endShape();
     }
     popMatrix();
   }
 
-  pushMatrix();
-  translate(-300, -30, 200);
-  rotateY(animBeacon / 2);
-  setMaterial(100, 200, 100, matPreset);
-  box(60);
-  popMatrix();
-
-  if (importedModel != null && !isWireframe) {
-    pushMatrix();
-    translate(300, 0, 200);
-    rotateX(PI);
-    scale(50);
-    shape(importedModel);
-    popMatrix();
-  }
   if (isDebug) {
     stroke(150);
     for (int i = -5000; i <= 5000; i += 50) {
@@ -139,7 +132,7 @@ void drawEnvironment() {
     }
     strokeWeight(2);
     stroke(255, 0, 0); line(0, 0, 0, 2000, 0, 0);
-    stroke(0, 255, 0); line(0, 0, 0, 0, -2000, 0);
+    stroke(0, 255, 0); line(0, 0, 0, 0, -2000, 0); 
     stroke(0, 0, 255); line(0, 0, 0, 0, 0, 2000);
     strokeWeight(1);
   }
@@ -147,50 +140,46 @@ void drawEnvironment() {
 }
 
 void drawHUD() {
-  fill(0, 150); noStroke(); rect(10, 10, 320, 495);
-
+  fill(0, 180); noStroke(); 
+  rect(10, 10, 480, 410); 
+  
   fill(255); textSize(14);
-  text("SHADING: " + shadingName(), 20, 30);
-  text("PRESET ŚWIATŁA: " + (lightPreset == 0 ? "DZIEŃ" : "NOC") + "  [" + (isLightsOn ? "ON" : "OFF") + "]", 20, 50);
-  text("KAMERA: " + (cameraMode == 0 ? "ORBIT" : "Z POJAZDU"), 20, 70);
-  text("MISJA: " + collectedCount + " / " + NUM_COLLECTIBLES, 20, 90);
+  text("STEROWANIE I STATUS:", 25, 35);
+  
+  text("[1] Tryb renderowania: " + (isWireframe ? "WIREFRAME" : "SOLID"), 25, 60);
+  text("[2] Rzutowanie kamery: " + (isOrtho ? "ORTHO" : "PERSPECTIVE"), 25, 82);
+  text("[3] Debug: " + (isDebug ? "ON" : "OFF"), 25, 104);
+  
+  fill(isTR ? 255 : color(255, 100, 100));
+  text("[4] Transformacja chwytaka: " + (isTR ? "T*R" : "R*T"), 25, 126); 
+  text("[F] Shading: " + (shadingMode == 0 ? "DOMYŚLNY" : "FLAT"), 25, 148); 
+  text("[C] Kamera: " + (cameraMode == 0 ? "ORBITALNA" : "CHASE"), 25, 170);
+  text("[L] System świateł: " + (isLightsOn ? "WŁĄCZONE" : "WYŁĄCZONE"), 25, 192);
+  text("[P] Oświetlenie: " + (lightPreset == 0 ? "DZIEŃ" : "NOC"), 25, 214);
+  text("[M] Materiał: " + (matPreset == 0 ? "MATOWY" : (matPreset == 1 ? "METALICZNY" : "EMISSIVE")), 25, 236);
+  
+  fill(200); 
+  text("W/A/S/D : Poruszanie", 25, 264);
+  text("Q / E : Obrót wieżyczki", 25, 286);
+  text("I / K : Górne Ramię", 25, 308);
+  text("J / L : Dolne Ramię", 25, 330);
+  text("Z / X : Chwytak", 25, 352);
+  text("SPACJA: Strzał", 25, 374);
+  text("R : Reset", 25, 396);
+
+  fill(0, 200); rect(width/2 - 150, 20, 300, 60, 10);
+  fill(255, 255, 0); textSize(20); textAlign(CENTER);
+  text("Zebrano znaczników: " + collectedCount + " / " + NUM_COLLECTIBLES, width/2, 58);
+  textAlign(LEFT);
 
   if (missionComplete) {
-    fill(0, 255, 0);
+    fill(0, 150); rect(0, 0, width, height);
+    fill(0, 255, 0); textSize(60); textAlign(CENTER);
+    text("MISJA UKOŃCZONA", width/2, height/2);
     textSize(20);
-    text("Misja ukończona !", 20, 120);
-    fill(255);
-    textSize(14);
+    text("Kliknij R aby zresetować", width/2, height/2 + 50);
+    textAlign(LEFT);
   }
-
-  fill(255);
-  text("--- USTAWIENIA ---", 20, 150);
-  text("[F] Shading: FLAT / GOURAUD / PHONG", 20, 170);
-  text("[1] Render: " + (isWireframe ? "WIREFRAME" : "SOLID"), 20, 190);
-  text("[2] Projekcja: " + (isOrtho ? "ORTHO" : "PERSPECTIVE"), 20, 210);
-  text("[3] Debug: " + (isDebug ? "ON" : "OFF"), 20, 230);
-  text("[4] Transform chwytaka: " + (isTR ? "T*R" : "R*T"), 20, 250);
-  text("[O] Światła: " + (isLightsOn ? "WŁĄCZONE" : "WYŁĄCZONE"), 20, 270);
-  text("[P] Preset Oświetlenia (DZIEŃ/NOC)", 20, 290);
-  text("[M] Materiał Łazika: " + (matPreset == 0 ? "MATOWY" : (matPreset == 1 ? "METALICZNY" : "EMISSIVE")), 20, 310);
-
-  fill(200);
-  text("--- STEROWANIE ---", 20, 335);
-  text("W/S : Jazda przód/tył", 20, 355);
-  text("A/D : Skręt", 20, 375);
-  text("Q/E : Obrót wieżyczki", 20, 395);
-  text("I/K : Ramię górne", 20, 415);
-  text("J/L : Ramię dolne", 20, 435);
-  text("Z/X : Chwytak", 20, 455);
-  text("SPACE : Strzał sondy", 20, 475);
-  text("C : Zmiana kamery | R : Reset", 20, 495);
-}
-
-String shadingName() {
-  if (isWireframe) return "WIREFRAME";
-  if (shadingMode == 0) return "FLAT";
-  if (shadingMode == 1) return "GOURAUD";
-  return "PHONG";
 }
 
 void keyPressed() {
@@ -198,47 +187,37 @@ void keyPressed() {
   if (key == '2') isOrtho = !isOrtho;
   if (key == '3') isDebug = !isDebug;
   if (key == '4') isTR = !isTR;
-  if (key == 'o' || key == 'O') isLightsOn = !isLightsOn;
+  if (key == 'f' || key == 'F') shadingMode = (shadingMode + 1) % 2;
+  if (key == 'c' || key == 'C') cameraMode = (cameraMode + 1) % 2;
+  
+  if (key == 'l' || key == 'L') isLightsOn = !isLightsOn;
   if (key == 'p' || key == 'P') lightPreset = (lightPreset + 1) % 2;
   if (key == 'm' || key == 'M') matPreset = (matPreset + 1) % 3;
-  if (key == 'f' || key == 'F') shadingMode = (shadingMode + 1) % 3;
-  if (key == 'c' || key == 'C') cameraMode = (cameraMode + 1) % 2;
-
-  if (key == 'r' || key == 'R') {
+  if (key == ' ') fireProbe(); 
+  
+  if (key == 'r' || key == 'R') { 
     cam.reset();
-    turretAngle = 0;
-    arm1Angle = radians(-30);
-    arm2Angle = radians(-60);
-    gripperSpread = 10;
-    roverX = 0;
-    roverZ = 0;
-    roverHeading = 0;
-    roverSpeed = 0;
-    initObstacles();
-    initCollectibles();
+    cam.setRotations(-0.5, PI, 0);
+    turretAngle = 0; arm1Angle = radians(-30); arm2Angle = radians(-60); gripperSpread = 10;
+    roverX = 0; roverZ = 0; roverHeading = 0; roverSpeed = 0;
+    collectedCount = 0; missionComplete = false;
+    for(int i=0; i<NUM_COLLECTIBLES; i++) {
+      colCollected[i] = false;
+    }
   }
-
-  // Movement keys (continuous, handled via keyReleased too)
+  
   if (key == 'w' || key == 'W') keyPressedW = true;
   if (key == 's' || key == 'S') keyPressedS = true;
   if (key == 'a' || key == 'A') keyPressedA = true;
   if (key == 'd' || key == 'D') keyPressedD = true;
-
-  // Turret rotation
-  float step = 0.05;
+  
+  float step = 0.2;
   if (key == 'q' || key == 'Q') turretAngle -= step;
   if (key == 'e' || key == 'E') turretAngle += step;
-
-  // Arm joints
   if (key == 'i' || key == 'I') arm1Angle -= step;
   if (key == 'k' || key == 'K') arm1Angle += step;
   if (key == 'j' || key == 'J') arm2Angle -= step;
   if (key == 'l' || key == 'L') arm2Angle += step;
-
-  // SPACE: fire probe
-  if (key == ' ') fireProbe();
-
-  // Gripper spread
   if (key == 'z' || key == 'Z') gripperSpread = max(2, gripperSpread - 2);
   if (key == 'x' || key == 'X') gripperSpread = min(20, gripperSpread + 2);
 }
